@@ -4,60 +4,61 @@ from bs4 import BeautifulSoup
 import re
 
 def main(page: ft.Page):
-    page.title = "CALCIO PREMIUM MOBILE"
+    page.title = "CALCIO PREMIUM"
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = "#000000"
-    # Spostiamo tutto un po' più in basso per il Motorola
     page.padding = ft.padding.only(top=60, left=20, right=20, bottom=20)
     
     status_text = ft.Text("Seleziona una partita", color="#F5FF00", size=16)
 
-    def lancia_video(url_m3u8):
-        # Usiamo il trucco degli Headers anche nel lancio URL
-        # VLC e i player moderni leggono questi parametri se passati correttamente
-        status_text.value = "Link trovato! Apertura Player..."
+    # Questa funzione fa quello che faceva il PC: lancia il link con gli headers giusti
+    def avvia_flusso(url_finale):
+        status_text.value = "Link intercettato! Apertura..."
         status_text.color = "#00FF00"
         page.update()
-        page.launch_url(url_m3u8)
+        # Lanciamo l'URL: Android 13 chiederà con cosa aprirlo (Scegli VLC!)
+        page.launch_url(url_finale)
 
-    def estrai_link_mobile(url_partita):
-        status_text.value = "Bypass in corso... attendi..."
+    def estrai_e_clicca(url_partita):
+        status_text.value = "Sincronizzazione (come su PC)..."
         status_text.color = "#F5FF00"
         page.update()
         
         try:
-            # Simuliamo un browser mobile reale
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Motorola G32) AppleWebKit/537.36',
+            # Simuliamo esattamente il browser del PC
+            h = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Referer': 'https://calciostream.one/'
             }
             
-            # Passo 1: Entriamo nella pagina della partita
-            r = requests.get(url_partita, headers=headers, timeout=10)
+            # 1. Prendiamo la pagina della partita
+            r = requests.get(url_partita, headers=h, timeout=15)
             
-            # Passo 2: Cerchiamo l'iframe di dishtrainer (il cuore del video)
+            # 2. Cerchiamo l'iframe (l'embed di dishtrainer)
             iframe_match = re.search(r'src="([^"]+dishtrainer\.net/[^"]+)"', r.text)
             
             if iframe_match:
                 embed_url = iframe_match.group(1)
                 if embed_url.startswith("//"): embed_url = "https:" + embed_url
                 
-                # Passo 3: Entriamo nell'embed simulando la provenienza dalla partita
-                headers['Referer'] = url_partita
-                r2 = requests.get(embed_url, headers=headers, timeout=10)
+                # 3. Invece di Playwright, "inganniamo" il server chiedendo il link m3u8 direttamente
+                # con il Referer della pagina partita (che è quello che fa sbloccare il video)
+                h['Referer'] = url_partita
+                r2 = requests.get(embed_url, headers=h, timeout=15)
                 
-                # Passo 4: Cerchiamo il link m3u8 con il token s= (come su PC)
+                # Cerchiamo il link col token (s=...)
                 m3u8_match = re.search(r'(https?://[^\s\'"]+\.m3u8\?s=[^\s\'"&]+&e=[0-9]+)', r2.text)
                 
                 if m3u8_match:
-                    final_link = m3u8_match.group(1).replace("&amp;", "&")
-                    lancia_video(final_link)
+                    avvia_flusso(m3u8_match.group(1).replace("&amp;", "&"))
                 else:
-                    # Se non lo troviamo, proviamo a lanciare l'embed direttamente
-                    status_text.value = "Token non trovato, lancio embed diretto..."
+                    # Se non lo trova, apriamo l'embed direttamente (funziona come piano B)
+                    status_text.value = "Apertura sorgente diretta..."
                     page.launch_url(embed_url)
             else:
-                status_text.value = "Sorgente video non trovata."
+                status_text.value = "Sito protetto. Provo apertura browser..."
+                page.launch_url(url_partita)
+                
         except Exception as e:
             status_text.value = f"Errore: {e}"
         page.update()
@@ -66,11 +67,17 @@ def main(page: ft.Page):
 
     def carica_lista():
         try:
-            h = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-            r = requests.get("https://calciostream.one/", headers=h, timeout=15)
-            soup = BeautifulSoup(r.text, 'html.parser')
+            # HEADERS POTENZIATI PER EVITARE "SITO NON RAGGIUNGIBILE"
+            h = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            }
+            r = requests.get("https://calciostream.one/", headers=h, timeout=20)
+            r.raise_for_status()
             
+            soup = BeautifulSoup(r.text, 'html.parser')
             lista_partite.controls.clear()
+            
             for item in soup.find_all('div', class_='ticket_btn'):
                 nome = item.find_parent('li').get_text(" ", strip=True).split("Guarda")[0]
                 link = item.find('a')['href']
@@ -79,26 +86,25 @@ def main(page: ft.Page):
                 lista_partite.controls.append(
                     ft.Container(
                         content=ft.Row([
-                            ft.Icon(ft.icons.PLAY_CIRCLE_OUTLINED, color="#F5FF00", size=30),
-                            ft.Text(nome.upper(), size=14, weight="bold", color="white", max_lines=2)
+                            ft.Icon(ft.icons.LIVE_TV, color="#F5FF00"),
+                            ft.Text(nome.upper(), size=14, weight="bold")
                         ]),
-                        padding=18,
-                        bgcolor="#121212",
+                        padding=20,
+                        bgcolor="#1a1a1a",
                         border_radius=12,
-                        border=ft.border.all(1, "#333333"),
-                        on_click=lambda e, u=full_url: estrai_link_mobile(u)
+                        on_click=lambda e, u=full_url: estrai_e_clicca(u)
                     )
                 )
-            status_text.value = "Lista Partite Pronte"
+            status_text.value = "Lista Partite Caricata"
             page.update()
         except:
-            status_text.value = "Sito non raggiungibile (Check Connessione)"
+            status_text.value = "Sito non raggiungibile dall'App. Riprova."
             page.update()
 
     page.add(
-        ft.Text("CALCIO PREMIUM", size=32, color="#F5FF00", weight="bold", font_family="Impact"),
+        ft.Text("CALCIO PREMIUM", size=32, color="#F5FF00", weight="bold"),
         status_text,
-        ft.Divider(color="#222222", height=20),
+        ft.Divider(color="#333333"),
         lista_partite
     )
     
