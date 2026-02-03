@@ -1,3 +1,8 @@
 [tool.flet]
 app_title = "Calcio Premium"
 bundle_id = "com.pietro.calcioapp"
+
+[tool.flet.android]
+permissions = ["INTERNET", "ACCESS_NETWORK_STATE"]
+# Questo serve per permettere i contenuti HTTP/HTTPS mixati
+permissions_maybe = ["WAKE_LOCK"]
