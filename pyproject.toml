@@ -1,8 +1,8 @@
 [tool.flet]
 app_title = "Calcio Premium"
-bundle_id = "com.pietro.calcioapp"
+bundle_id = "com.tuonome.calciopremium"
 
 [tool.flet.android]
 permissions = ["INTERNET", "ACCESS_NETWORK_STATE"]
-# Questo serve per permettere i contenuti HTTP/HTTPS mixati
-permissions_maybe = ["WAKE_LOCK"]
+# Questo assicura che il video possa essere lanciato all'esterno
+manage_external_storage = false
