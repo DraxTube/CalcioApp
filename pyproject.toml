@@ -4,5 +4,6 @@ bundle_id = "com.tuonome.calciopremium"
 
 [tool.flet.android]
 permissions = ["INTERNET", "ACCESS_NETWORK_STATE"]
-# Questo assicura che il video possa essere lanciato all'esterno
+# Questa parte è fondamentale: permette all'app di "vedere" se VLC è installato e lanciarlo
+query_packages = ["org.videolan.vlc"]
 manage_external_storage = false
