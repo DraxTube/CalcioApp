@@ -1,0 +1,3 @@
+[tool.flet]
+app_title = "Calcio Premium"
+bundle_id = "com.pietro.calcioapp"
