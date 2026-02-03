@@ -12,19 +12,19 @@ def main(page: ft.Page):
     status_label = ft.Text("Seleziona una partita dalla lista", color="#aaaaaa", size=14)
 
     def avvia_bypass_android(url_partita):
-        status_label.value = "Intercettazione flusso... (Simulazione PC)"
+        status_label.value = "Intercettazione flusso... attendi"
         status_label.color = "#F5FF00"
         page.update()
 
         try:
-            # Headers identici alla versione PC
+            # Headers e logica derivati dal tuo test.py per PC
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Referer': 'https://calciostream.one/'
             }
             
             r = requests.get(url_partita, headers=headers, timeout=15)
-            # Logica di estrazione iframe presa dal tuo test.py
+            # Cerchiamo l'iframe come fatto nello script PC
             iframe_match = re.search(r'src="([^"]+dishtrainer\.net/[^"]+)"', r.text)
             
             if iframe_match:
@@ -34,8 +34,10 @@ def main(page: ft.Page):
                 status_label.value = "FLUSSO ATTIVATO!"
                 status_label.color = "#00FF00"
                 page.update()
-                # Lancio URL esterno (sostituisce ffplay del PC)
-                page.launch_url(embed_url)
+                
+                # MODIFICA CRITICA: Forziamo il sistema a lanciare l'intent per VLC/Player
+                # web_window_name="_self" aiuta Android a capire che deve gestire il link esternamente
+                page.launch_url(embed_url, web_window_name="_self")
             else:
                 status_label.value = "Link non trovato. Riprova."
                 status_label.color = "orange"
@@ -49,6 +51,7 @@ def main(page: ft.Page):
 
     def carica_lista():
         try:
+            # Caricamento lista con lo stesso stile del file PC
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
             r = requests.get("https://calciostream.one/", headers=headers, timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
