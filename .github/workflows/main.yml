@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4 # Aggiornato a v4
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -22,11 +22,11 @@ jobs:
           channel: 'stable'
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Aggiornato a v5
         with:
           python-version: '3.11'
 
-      - name: Install Flet and Dependencies
+      - name: Install Dependencies
         run: |
           pip install flet requests beautifulsoup4
 
@@ -35,7 +35,7 @@ jobs:
           flet build apk
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 # <--- QUESTA È LA CORREZIONE CRITICA
         with:
           name: CalcioPremium-APK
           path: build/apk/*.apk
